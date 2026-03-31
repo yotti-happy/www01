@@ -1,0 +1,204 @@
+import React, { useState, useEffect } from 'react';
+import { Volume2, Trophy, RotateCcw, Home, PlayCircle } from 'lucide-react';
+
+const HIRAGANA_DATA = [
+  ['あ', 'い', 'う', 'え', 'お'],
+  ['か', 'き', 'く', 'け', 'こ'],
+  ['さ', 'し', 'す', 'せ', 'そ'],
+  ['た', 'ち', 'つ', 'て', 'と'],
+  ['な', 'に', 'ぬ', 'ね', 'の'],
+  ['は', 'ひ', 'ふ', 'へ', 'ほ'],
+  ['ま', 'み', 'む', 'め', 'も'],
+  ['や', '（ゆ）', 'ゆ', '（よ）', 'よ'],
+  ['ら', 'り', 'る', 'れ', 'ろ'],
+  ['わ', '（を）', '（ん）', 'を', 'ん'],
+];
+
+const ALL_CHARS = HIRAGANA_DATA.flat().filter(char => !char.includes('（'));
+
+export default function App() {
+  const [view, setView] = useState('home'); // 'home', 'chart', 'quiz'
+  const [selectedChar, setSelectedChar] = useState(null);
+  const [quizTarget, setQuizTarget] = useState(null);
+  const [quizOptions, setQuizOptions] = useState([]);
+  const [score, setScore] = useState(0);
+  const [message, setMessage] = useState('文字をえらんでね！');
+
+  // Speech function
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const uttr = new SpeechSynthesisUtterance(text);
+      uttr.lang = 'ja-JP';
+      uttr.rate = 0.9;
+      window.speechSynthesis.speak(uttr);
+    }
+  };
+
+  // Quiz Logic
+  const startNewQuiz = () => {
+    const target = ALL_CHARS[Math.floor(Math.random() * ALL_CHARS.length)];
+    let options = [target];
+    while (options.length < 4) {
+      const randomChar = ALL_CHARS[Math.floor(Math.random() * ALL_CHARS.length)];
+      if (!options.includes(randomChar)) {
+        options.push(randomChar);
+      }
+    }
+    setQuizTarget(target);
+    setQuizOptions(options.sort(() => Math.random() - 0.5));
+    setMessage(`「${target}」は どれかな？`);
+    speak(target);
+  };
+
+  const handleQuizAnswer = (answer) => {
+    if (answer === quizTarget) {
+      setScore(s => s + 1);
+      setMessage('せいかい！ すごいね！');
+      speak('せいかい！');
+      setTimeout(startNewQuiz, 1500);
+    } else {
+      setMessage('ざんねん！ もういちど やってみよう');
+      speak('ちがうよ');
+    }
+  };
+
+  useEffect(() => {
+    if (view === 'quiz') startNewQuiz();
+  }, [view]);
+
+  return (
+    <div className="min-h-screen bg-pink-50 font-sans text-slate-800 p-4 pb-12">
+      {/* Header */}
+      <header className="max-w-2xl mx-auto flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm">
+        <h1 className="text-2xl font-bold text-pink-500 flex items-center gap-2">
+          <span className="text-3xl">🌸</span> ひらがな ぱーく
+        </h1>
+        {view !== 'home' && (
+          <button 
+            onClick={() => setView('home')}
+            className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-colors"
+          >
+            <Home size={20} />
+            <span>もどる</span>
+          </button>
+        )}
+      </header>
+
+      <main className="max-w-2xl mx-auto">
+        {/* Home View */}
+        {view === 'home' && (
+          <div className="grid grid-cols-1 gap-6 mt-12">
+            <button 
+              onClick={() => setView('chart')}
+              className="bg-white hover:bg-pink-50 border-4 border-pink-200 p-8 rounded-3xl shadow-lg transition-all transform hover:scale-105 group"
+            >
+              <div className="text-6xl mb-4 group-hover:animate-bounce">あいうえお</div>
+              <div className="text-xl font-bold text-pink-600 italic">ひらがな ひょう</div>
+              <p className="text-slate-500 mt-2">じぶんで おして おぼえよう</p>
+            </button>
+
+            <button 
+              onClick={() => setView('quiz')}
+              className="bg-white hover:bg-blue-50 border-4 border-blue-200 p-8 rounded-3xl shadow-lg transition-all transform hover:scale-105 group"
+            >
+              <div className="text-6xl mb-4 group-hover:animate-spin">❓</div>
+              <div className="text-xl font-bold text-blue-600 italic">ひらがな クイズ</div>
+              <p className="text-slate-500 mt-2">おとを きいて あててみよう</p>
+            </button>
+          </div>
+        )}
+
+        {/* Chart View */}
+        {view === 'chart' && (
+          <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-lg border-2 border-pink-100">
+            <div className="grid grid-cols-5 gap-2 sm:gap-4 mb-6">
+              {HIRAGANA_DATA.map((row, rIdx) => (
+                row.map((char, cIdx) => (
+                  <button
+                    key={`${rIdx}-${cIdx}`}
+                    onClick={() => {
+                      if (!char.includes('（')) {
+                        setSelectedChar(char);
+                        speak(char);
+                      }
+                    }}
+                    disabled={char.includes('（')}
+                    className={`
+                      aspect-square flex items-center justify-center text-2xl sm:text-3xl font-bold rounded-xl transition-all
+                      ${char.includes('（') ? 'bg-transparent text-transparent' : 'bg-pink-50 hover:bg-pink-200 text-slate-700 active:scale-90 border-b-4 border-pink-100'}
+                      ${selectedChar === char ? 'bg-pink-400 text-white border-pink-500' : ''}
+                    `}
+                  >
+                    {char.includes('（') ? '' : char}
+                  </button>
+                ))
+              ))}
+            </div>
+            
+            {selectedChar && (
+              <div className="flex flex-col items-center p-6 bg-pink-100 rounded-2xl animate-in fade-in zoom-in duration-300">
+                <div className="text-8xl font-black text-pink-600 mb-4">{selectedChar}</div>
+                <button 
+                  onClick={() => speak(selectedChar)}
+                  className="flex items-center gap-2 bg-white px-6 py-3 rounded-full shadow-md text-pink-600 font-bold hover:bg-pink-50 transition-colors"
+                >
+                  <Volume2 />
+                  もういちど きく
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Quiz View */}
+        {view === 'quiz' && (
+          <div className="flex flex-col items-center">
+            <div className="bg-white w-full p-8 rounded-3xl shadow-lg border-4 border-blue-200 mb-6 text-center">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2 text-blue-600 font-bold">
+                  <Trophy className="text-yellow-500" />
+                  <span>スコア: {score}</span>
+                </div>
+                <button 
+                  onClick={() => { setScore(0); startNewQuiz(); }}
+                  className="text-slate-400 hover:text-blue-500"
+                >
+                  <RotateCcw size={20} />
+                </button>
+              </div>
+              
+              <div className="text-2xl font-bold text-slate-700 mb-8 min-h-[3rem]">
+                {message}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {quizOptions.map((opt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleQuizAnswer(opt)}
+                    className="aspect-square bg-blue-50 hover:bg-blue-100 border-b-4 border-blue-200 text-5xl font-bold text-slate-700 rounded-3xl transition-all active:scale-95 flex items-center justify-center"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => speak(quizTarget)}
+                className="mt-8 flex items-center gap-2 mx-auto bg-blue-500 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-blue-600 active:scale-95 transition-all"
+              >
+                <PlayCircle />
+                おとを きく
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <footer className="fixed bottom-4 left-0 right-0 text-center text-slate-400 text-sm">
+        🌸 たのしく ひらがなを おぼえよう！
+      </footer>
+    </div>
+  );
+}
